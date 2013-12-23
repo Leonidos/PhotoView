@@ -147,6 +147,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     private FlingRunnable mCurrentFlingRunnable;
     private int mScrollEdge = EDGE_BOTH;
 
+    private boolean mImageLocked;
     private boolean mZoomEnabled;
     private ScaleType mScaleType = ScaleType.FIT_CENTER;
 
@@ -185,6 +186,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
         // Finally, update the UI so that we're zoomable
         setZoomable(true);
+        setImageLocked(false);
     }
 
     @Override
@@ -267,6 +269,16 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         mSuppMatrix.postRotate(mLastRotation - degrees);
         mLastRotation = degrees;
         checkAndDisplayMatrix();
+    }
+
+    @Override
+    public void setImageLocked(boolean locked) {
+        mImageLocked = locked;
+    }
+
+    @Override
+    public boolean isImageLocked() {
+        return mImageLocked;
     }
 
     public final ImageView getImageView() {
@@ -358,31 +370,33 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
 
     @Override
     public final void onDrag(float dx, float dy) {
-        if (DEBUG) {
-            LogManager.getLogger().d(LOG_TAG,
-                    String.format("onDrag: dx: %.2f. dy: %.2f", dx, dy));
-        }
+        if (!mImageLocked) {
+            if (DEBUG) {
+                LogManager.getLogger().d(LOG_TAG,
+                        String.format("onDrag: dx: %.2f. dy: %.2f", dx, dy));
+            }
 
-        ImageView imageView = getImageView();
-        mSuppMatrix.postTranslate(dx, dy);
-        checkAndDisplayMatrix();
+            ImageView imageView = getImageView();
+            mSuppMatrix.postTranslate(dx, dy);
+            checkAndDisplayMatrix();
 
-        /**
-         * Here we decide whether to let the ImageView's parent to start taking
-         * over the touch event.
-         *
-         * First we check whether this function is enabled. We never want the
-         * parent to take over if we're scaling. We then check the edge we're
-         * on, and the direction of the scroll (i.e. if we're pulling against
-         * the edge, aka 'overscrolling', let the parent take over).
-         */
-        if (mAllowParentInterceptOnEdge && !mScaleDragDetector.isScaling()) {
-            if (mScrollEdge == EDGE_BOTH
-                    || (mScrollEdge == EDGE_LEFT && dx >= 1f)
-                    || (mScrollEdge == EDGE_RIGHT && dx <= -1f)) {
-                ViewParent parent = imageView.getParent();
-                if (null != parent)
-                    parent.requestDisallowInterceptTouchEvent(false);
+            /**
+             * Here we decide whether to let the ImageView's parent to start taking
+             * over the touch event.
+             *
+             * First we check whether this function is enabled. We never want the
+             * parent to take over if we're scaling. We then check the edge we're
+             * on, and the direction of the scroll (i.e. if we're pulling against
+             * the edge, aka 'overscrolling', let the parent take over).
+             */
+            if (mAllowParentInterceptOnEdge && !mScaleDragDetector.isScaling()) {
+                if (mScrollEdge == EDGE_BOTH
+                        || (mScrollEdge == EDGE_LEFT && dx >= 1f)
+                        || (mScrollEdge == EDGE_RIGHT && dx <= -1f)) {
+                    ViewParent parent = imageView.getParent();
+                    if (null != parent)
+                        parent.requestDisallowInterceptTouchEvent(false);
+                }
             }
         }
     }
@@ -435,7 +449,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     }
 
     public final void onScale(float scaleFactor, float focusX, float focusY) {
-        if (mZoomEnabled == true) {
+        if (!mImageLocked) {
             if (DEBUG) {
                 LogManager.getLogger().d(
                         LOG_TAG,
@@ -484,7 +498,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     public final boolean onTouch(View v, MotionEvent ev) {
         boolean handled = false;
 
-        if (hasDrawable((ImageView) v)) {
+        if (mZoomEnabled && hasDrawable((ImageView) v)) {
             ViewParent parent = v.getParent();
             switch (ev.getAction()) {
                 case ACTION_DOWN:
@@ -504,7 +518,7 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                 case ACTION_UP:
                     // If the user has zoomed less than min scale, zoom back
                     // to min scale
-                    if (mZoomEnabled) {
+                    if (!mImageLocked) {
                         if (getScale() < mMinScale) {
                             RectF rect = getDisplayRect();
                             if (null != rect) {

@@ -58,6 +58,16 @@ public class PhotoView extends ImageView implements IPhotoView {
     }
 
     @Override
+    public void setImageLocked(boolean locked) {
+        mAttacher.setImageLocked(locked);
+    }
+
+    @Override
+    public boolean isImageLocked() {
+        return mAttacher.isImageLocked();
+    }
+
+    @Override
     public boolean canZoom() {
         return mAttacher.canZoom();
     }

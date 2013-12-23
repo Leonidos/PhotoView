@@ -232,4 +232,17 @@ public interface IPhotoView {
      */
     void setPhotoViewRotation(float rotationDegree);
 
+    /**
+     * Locks image disabling zoom/position changes
+     *
+     * @param locked
+     */
+    void setImageLocked(boolean locked);
+
+    /**
+     * Returns image lock state
+     *
+     * @return
+     */
+    boolean isImageLocked();
 }
